@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:apiorc/env.dart';
 import 'package:apiorc/widget/form.dart';
-//import 'package:image_picker/image_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:http/http.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Create extends StatefulWidget {
   final Function? refreshOrcamentoList;
@@ -26,10 +27,12 @@ class _CreateState extends State<Create> {
   // Handles text onchange
   TextEditingController nameController = new TextEditingController();
   TextEditingController detailController = new TextEditingController();
+
+  //imagem
   String status = '';
-  //String errMessage = 'Error Uploading Image';
-  //final picker = ImagePicker();
-  //File? _image;
+  String errMessage = 'Error Uploading Image';
+  final picker = ImagePicker();
+  File? _image;
 
 
   setStatus(String message) {
@@ -38,19 +41,50 @@ class _CreateState extends State<Create> {
     });
   }
 
-/*
-  Future getImage() async {
+
+  Future _getImage() async {
     var image = await picker.getImage(source: ImageSource.gallery);
+    print('kkkkk');
     setState(() {
       _image = File(image!.path);
     });
-
   }
-*/
+
   // Http post request to create new data
 
   Future _createOrcamento() async {
-    final headers = {"Content-type": "application/json"};
+    //Buscar na memória do dispositivo a variavel contendo o Token
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var tokenJson = localStorage.getString('token');
+    var token = json.decode(tokenJson!)['token'];
+    //print(token);
+
+
+
+    //final headers = {"Content-type": "application/json"};
+    final url = Uri.parse('${Env.urlPrefix}/orcamentos');
+
+    print(_image);
+    var request = http.MultipartRequest('POST', url);
+    //HEADER
+    request.headers['Content-type'] = 'application/json';
+    request.headers['Accept'] = 'application/json';
+    request.headers['Authorization'] = 'Bearer $token';
+    //CAMPOS
+    request.fields['name'] = nameController.text;
+    request.fields['detail'] = detailController.text;
+    var pic = await http.MultipartFile.fromPath("image", _image!.path);
+    request.files.add(pic);
+    var response = await request.send();
+
+    if(response.statusCode == 200){
+      print('imagem enviada com sucesso');
+    }else{
+      print('erro ao enviar imagem');
+      print(response);
+    }
+
+    /*
 
     final url = Uri.parse('${Env.urlPrefix}/orcamentos');
     print(url);
@@ -63,6 +97,8 @@ class _CreateState extends State<Create> {
     print('Corpo: ${response.body}');
 
 
+     */
+
   }
 
   void _onConfirm(context) async {
@@ -70,7 +106,7 @@ class _CreateState extends State<Create> {
 
     // Remove all existing routes until the Home.dart, then rebuild Home.
     Navigator.of(context)
-        .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+        .pushNamedAndRemoveUntil('/home', (Route<dynamic> route) => false);
   }
 
 
@@ -105,11 +141,10 @@ class _CreateState extends State<Create> {
               ),
             ),
 
-/*
             IconButton(
               icon: Icon(Icons.camera),
               onPressed: () {
-                getImage();
+                _getImage();
               },
             ),
             Container(
@@ -123,7 +158,7 @@ class _CreateState extends State<Create> {
             SizedBox(
               height: 20.0,
             ),
-  */
+
             SizedBox(
               height: 20.0,
             ),

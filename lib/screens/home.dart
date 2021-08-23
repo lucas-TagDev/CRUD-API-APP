@@ -1,4 +1,9 @@
+import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:apiorc/network/api.dart';
+import 'login.dart';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -15,6 +20,8 @@ class Home extends StatefulWidget {
 }
 
 class HomeState extends State<Home> {
+  String name='';
+
   late Future<List<Orcamento>> orcamentos;
   final orcamentoListKey = GlobalKey<HomeState>();
   final url = Uri.parse("${Env.urlPrefix}/orcamentos");
@@ -22,12 +29,46 @@ class HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
-    orcamentos = getOrcamentoList();
+    _loadUserData();
   }
 
+  _loadUserData() async{
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var userJson = localStorage.getString('user');
+    var user = json.decode(userJson!);
+    //var user = jsonDecode(localStorage.getString('user'));
+
+    if(user != null) {
+      setState(() {
+        name = user['name'];
+        orcamentos = getOrcamentoList();
+      });
+    }
+  }
+
+
   Future<List<Orcamento>> getOrcamentoList() async {
-    final response = await http.get(url);
-    print(json.decode(response.body));
+
+
+    //Buscar na memória do dispositivo a variavel contendo o Token
+    SharedPreferences localStorage = await SharedPreferences.getInstance();
+    var tokenJson = localStorage.getString('token');
+    var token = json.decode(tokenJson!)['token'];
+    //print(token);
+
+    //Passar o token para o laravel pelo Header
+    final headers = {
+      "Content-type": "application/json",
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+
+
+
+    //acessar URL para pegar a lista de itens
+    final response = await http.get(url, headers: headers);
+
     final items = json.decode(response.body).cast<Map<String, dynamic>>();
     print(items);
     List<Orcamento> orcamentos = items.map<Orcamento>((json) {
@@ -44,6 +85,14 @@ class HomeState extends State<Home> {
       key: orcamentoListKey,
       appBar: AppBar(
         title: Text('Listar Orcamentos'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.power_settings_new),
+            onPressed: (){
+              logout();
+            },
+          )
+        ],
       ),
       body: Center(
         child: FutureBuilder<List<Orcamento>>(
@@ -66,7 +115,7 @@ class HomeState extends State<Home> {
                             width: 50.0,
                             height: 50.0,
                             child: CircleAvatar(
-                              backgroundImage: NetworkImage("http://www.leblue.com.br/wp-content/uploads/2016/04/icon-quote.png"),
+                              backgroundImage: NetworkImage("${Env.urlHost}/images/${data.image}"),
                             ),
                           ),
                           Padding(
@@ -100,6 +149,21 @@ class HomeState extends State<Home> {
         },
       ),
     );
+  }
+
+
+  //Fazer Logout
+  void logout() async{
+    var res = await Network().getData('/logout');
+    var body = json.decode(res.body);
+    if(body['success']){
+      SharedPreferences localStorage = await SharedPreferences.getInstance();
+      localStorage.remove('user');
+      localStorage.remove('token');
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context)=>Login()));
+    }
   }
 }
 
