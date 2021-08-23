@@ -1,5 +1,8 @@
 # APP DE ORCAMENTO CRUD (LARAVEL+FLUTTER)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 4d85450ef158d3266abf790cff84ccb7905ca3c2
 App de orcamento
 
 ## Getting Started
